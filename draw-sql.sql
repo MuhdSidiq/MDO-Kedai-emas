@@ -3,6 +3,7 @@ CREATE TABLE `users`(
     `first_name` VARCHAR(255) NOT NULL,
     `last_time` VARCHAR(255) NOT NULL,
     `email` VARCHAR(255) NOT NULL,
+    `passwords` VARCHAR(255) NOT NULL,
     `is_verified` BOOLEAN NOT NULL,
     `roles_id` BIGINT NOT NULL,
     `profit_rate_id` BIGINT NOT NULL
