@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale-1.0">
+    <!-- Load Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"
+        xintegrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+    <!-- Load Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <title>Admin Dashboard</title>
+    <style>
+        /* Custom styles for sidebar */
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+
+        @media (min-width: 768px) {
+            .sidebar {
+                position: fixed;
+                top: 0;
+                bottom: 0;
+                left: 0;
+                z-index: 100;
+                padding: 48px 0 0;
+                /* Header height */
+                box-shadow: inset -1px 0 0 rgba(0, 0, 0, .1);
+            }
+        }
+
+        .sidebar-sticky {
+            position: relative;
+            top: 0;
+            height: calc(100vh - 48px);
+            padding-top: .5rem;
+            overflow-x: hidden;
+            overflow-y: auto;
+            /* Scrollable contents if viewport is shorter than content. */
+        }
+
+        .nav-link {
+            font-weight: 500;
+        }
+
+        .nav-link .svg-icon {
+            width: 20px;
+            height: 20px;
+            margin-right: 12px;
+        }
+    </style>
+</head>
+
+<body class="bg-light-subtle">
+
+    <!-- Main wrapper using Bootstrap grid -->
+    <div class="container-fluid">
+        <div class="row">
+
+            <!-- Sidebar -->
+            <nav id="sidebarMenu" class="col-md-3 col-lg-2 d-md-block bg-white sidebar collapse vh-100 border-end">
+                <div class="position-sticky pt-4 px-3">
+                    <div class="d-flex align-items-center justify-content-center justify-content-md-start mb-4">
+                        <!-- SVG Icon for Logo -->
+                        <svg class="h-8 w-8 text-primary me-2" style="width: 32px; height: 32px;"
+                            xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
+                            stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round"
+                                d="M20.25 6.375c0 2.278-3.694 4.125-8.25 4.125S3.75 8.653 3.75 6.375m16.5 0c0-2.278-3.694-4.125-8.25-4.125S3.75 4.097 3.75 6.375m16.5 0v11.25c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125V6.375" />
+                        </svg>
+                        <h1 class="fs-4 fw-bold text-dark d-none d-md-block mb-0">Admin</h1>
+                    </div>
+
+                    <!-- Navigation Menu -->
+                    <ul class="nav nav-pills flex-column">
+                        <li class="nav-item mb-1">
+                            <a href="#" class="nav-link active d-flex align-items-center" aria-current="page">
+                                <!-- Icon: Table -->
+                                <svg class="svg-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                                    stroke-width="1.5" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                        d="M3.375 19.5h17.25m-17.25 0a1.125 1.125 0 0 1-1.125-1.125v-1.5c0-.621.504-1.125 1.125-1.125h17.25c.621 0 1.125.504 1.125 1.125v1.5c0 .621-.504 1.125-1.125 1.125m-17.25 0h17.25m-17.25 0H3.375m0 0v-4.5h17.25v4.5m0 0v-4.5h-17.25v4.5m17.25-4.5v-4.5h-17.25v4.5m0 0h17.25" />
+                                </svg>
+                                Dashboard
+                            </a>
+                        </li>
+                        <li class="nav-item mb-1">
+                            <a href="#" class="nav-link text-dark d-flex align-items-center">
+                                <!-- Icon: Chart -->
+                                <svg class="svg-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                                    stroke-width="1.5" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                        d="M2.25 18 9 11.25l4.306 4.306a11.95 11.95 0 0 1 5.814-5.518l2.74-1.22m0 0-5.94-2.281m5.94 2.28-2.28 5.941" />
+                                </svg>
+                                Perubahan Harga
+                            </a>
+                        </li>
+                        <li class="nav-item mb-1">
+                            <a href="#" class="nav-link text-dark d-flex align-items-center">
+                                <!-- Icon: Price Tag -->
+                                <svg class="svg-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                                    stroke-width="1.5" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                        d="M12 6v12m-3-2.818.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.826-2.917-.826-4.023 0a2.952 2.952 0 0 0 0 3.182c.991.742 2.35.986 3.667.66m.002-2.311a2.95 2.95 0 0 0-.667-3.667c-.991-.742-2.35-.986-3.667-.66m0 0a2.95 2.95 0 0 0 3.667.66m0 0v2.31m0 0c.991.742 2.35.986 3.667.66m0 0c1.317.326 2.676.082 3.667-.66m0 0a2.95 2.95 0 0 0-.667-3.667m0 0c-1.317-.326-2.676-.082-3.667.66m.002 2.31m0 0c-.991-.742-2.35-.986-3.667-.66m-3.182 4.834c-.781.586-1.81.996-2.924 1.126M21 12c0 1.126-.34 2.156-.924 2.924m-1.126-2.924c.584.768.924 1.798.924 2.924" />
+                                </svg>
+                                Harga Emas Semasa
+                            </a>
+                        </li>
+                        <li class="nav-item mb-1">
+                            <a href="#" class="nav-link text-dark d-flex align-items-center">
+                                <!-- Icon: Box -->
+                                <svg class="svg-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                                    stroke-width="1.5" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                        d="M20.25 7.5l-.625 10.632a2.25 2.25 0 0 1-2.247 2.118H6.622a2.25 2.25 0 0 1-2.247-2.118L3.75 7.5M10.5 21l5.25-11.25M20.25 7.5H3.75m16.5 0l-1.125-1.5H4.875L3.75 7.5" />
+                                </svg>
+                                Stock Count
+                            </a>
+                        </li>
+                        <li class="nav-item mb-1">
+                            <a href="#" class="nav-link text-dark d-flex align-items-center">
+                                <!-- Icon: Inbox -->
+                                <svg class="svg-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                                    stroke-width="1.5" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                        d="M2.25 13.5h3.86a2.25 2.25 0 0 1 2.012 1.244l.256.512a2.25 2.25 0 0 0 2.013 1.244h3.218a2.25 2.25 0 0 0 2.013-1.244l.256-.512a2.25 2.25 0 0 1 2.013-1.244h3.859m-19.5.338V18a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18v-4.162c0-.224-.034-.447-.1-.661L19.24 5.338a2.25 2.25 0 0 0-2.12-1.58H6.88a2.25 2.25 0 0 0-2.12 1.58L2.35 13.177a2.25 2.25 0 0 0-.1.661Z" />
+                                </svg>
+                                Inbox
+                                <span class="ms-auto badge bg-danger rounded-pill">3</span>
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </nav>
+
+            <!-- Main Content -->
+            <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
+                <!-- Header -->
+                <header class="pt-4 pb-2 mb-4 border-bottom">
+                    <h2 class="h2 text-dark">Dashboard Overview</h2>
+                    <p class="text-muted mt-1">Welcome back, Admin!</p>
+                </header>
+
+                <!-- Widgets -->
+                <div class="row g-4 mb-4">
+
+                    <!-- Widget 1: Perubahan Harga Emas -->
+                    <div class="col-lg-4">
+                        <div class="card shadow-sm h-100 rounded-3 border-0">
+                            <div class="card-body">
+                                <h3 class="card-title h6 text-muted mb-2">Perubahan Harga Emas</h3>
+                                <div class="d-flex align-items-center">
+                                    <p class="h3 fw-bold text-success mb-0">+RM 1.50</p>
+                                    <span class="ms-2 small text-success">(+0.43%)</span>
+                                </div>
+                                <p class="text-muted small mt-1 mb-0">vs yesterday</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Widget 2: Stock Count -->
+                    <div class="col-lg-4">
+                        <div class="card shadow-sm h-100 rounded-3 border-0">
+                            <div class="card-body">
+                                <h3 class="card-title h6 text-muted mb-2">Stock Count</h3>
+                                <p class="h3 fw-bold text-dark mb-0">1,204</p>
+                                <p class="text-muted small mt-1 mb-0">Items in inventory</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Widget 3: Harga Emas Semasa -->
+                    <div class="col-lg-4">
+                        <div class="card shadow-sm h-100 rounded-3 border-0">
+                            <div class="card-body">
+                                <h3 class="card-title h6 text-muted mb-2">Harga Emas Semasa (RM/g)</h3>
+                                <p class="h3 fw-bold text-primary mb-0">RM 356.00</p>
+                                <p class="text-muted small mt-1 mb-0">As of 28 Oct 2025</p>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- Chart -->
+                <div class="card shadow-sm rounded-3 border-0">
+                    <div class="card-body p-4">
+                        <h3 class="card-title h5 text-dark mb-4">Graf Harga Emas (7 Hari)</h3>
+                        <!-- Canvas element for Chart.js -->
+                        <div class_="position-relative" style="height: 350px;">
+                            <canvas id="goldPriceChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- Bootstrap 5 JS Bundle -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
+        xintegrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz"
+        crossorigin="anonymous"></script>
+    <script>
+        // Chart.js script
+        document.addEventListener('DOMContentLoaded', () => {
+            const ctx = document.getElementById('goldPriceChart').getContext('2d');
+
+            // Sample data from the table
+            const labels = ['Hari 1', 'Hari 2', 'Hari 3', 'Hari 4', 'Hari 5', 'Hari 6', 'Hari 7'];
+            const data = [350.50, 352.00, 351.75, 353.00, 355.50, 354.00, 356.00];
+
+            new Chart(ctx, {
+                type: 'line', // Type of chart
+                data: {
+                    labels: labels, // X-axis labels
+                    datasets: [{
+                        label: 'Harga (RM / gram)', // Legend label
+                        data: data, // Y-axis data
+                        borderColor: 'rgb(13, 110, 253)', // Bootstrap primary blue
+                        backgroundColor: 'rgba(13, 110, 253, 0.1)', // Light blue fill
+                        tension: 0.1, // Line tension for slight curve
+                        fill: true, // Fill area under the line
+                        pointBackgroundColor: 'rgb(13, 110, 253)',
+                        pointBorderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: false, // Don't start Y-axis at 0
+                            title: {
+                                display: true,
+                                text: 'Harga (RM / gram)' // Y-axis title
+                            },
+                            grid: {
+                                color: '#e9ecef' // Lighter grid lines
+                            }
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Hari' // X-axis title
+                            },
+                            grid: {
+                                display: false // Hide X-axis grid lines
+                            }
+                        }
+                    },
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                // Format tooltip to show 'RM' prefix
+                                label: function (context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    if (context.parsed.y !== null) {
+                                        label += 'RM ' + context.parsed.y.toFixed(2);
+                                    }
+                                    return label;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        });
+    </script>
+
+</body>
+
+</html>
