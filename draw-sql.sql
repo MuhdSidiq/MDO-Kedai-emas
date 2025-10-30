@@ -36,4 +36,4 @@ CREATE TABLE `product_data`(
 ALTER TABLE
     `users` ADD CONSTRAINT `users_profit_rate_id_foreign` FOREIGN KEY(`profit_rate_id`) REFERENCES `profit_margin`(`id`);
 ALTER TABLE
-    `users` ADD CONSTRAINT `users_roles_id_foreign` FOREIGN KEY(`roles_id`) REFERENCES `roles`(`name`);
+    `users` ADD CONSTRAINT `users_roles_id_foreign` FOREIGN KEY(`roles_id`) REFERENCES `roles`(`id`);
