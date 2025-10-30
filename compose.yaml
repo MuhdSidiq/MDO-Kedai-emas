@@ -1,0 +1,45 @@
+version: '3.9'
+
+services:
+  mysql:
+    image: mysql:8
+    container_name: emas-mysql
+    command: ["--default-authentication-plugin=mysql_native_password"]
+    environment:
+      MYSQL_DATABASE: ${DB_NAME:-emas}
+      MYSQL_USER: ${DB_USER:-emas}
+      MYSQL_PASSWORD: ${DB_PASS:-secret}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASS:-rootpassword}
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -u root -p$${MYSQL_ROOT_PASSWORD} || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  db-seed:
+    image: php:8.2-cli
+    container_name: emas-db-seed
+    depends_on:
+      mysql:
+        condition: service_healthy
+    working_dir: /app
+    volumes:
+      - ./:/app
+    environment:
+      DB_HOST: mysql
+      DB_PORT: "3306"
+      DB_NAME: ${DB_NAME:-emas}
+      DB_USER: ${DB_USER:-emas}
+      DB_PASS: ${DB_PASS:-secret}
+    # Creates DB + runs migrations from draw-sql.sql, then seeds data
+    command: >
+      sh -c "php config/connection.php --setup && php config/database-seed.php"
+
+volumes:
+  mysql_data:
+
+
