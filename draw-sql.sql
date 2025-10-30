@@ -8,10 +8,12 @@ CREATE TABLE `users`(
     `roles_id` BIGINT NOT NULL,
     `profit_rate_id` BIGINT NOT NULL
 );
+
 CREATE TABLE `roles`(
     `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
     `name` VARCHAR(255) NOT NULL
 );
+
 CREATE TABLE `contact_submission`(
     `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
     `name` VARCHAR(255) NOT NULL,

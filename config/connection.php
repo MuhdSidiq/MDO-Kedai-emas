@@ -8,11 +8,11 @@ class Database
     public static function getConfig(): array
     {
         return [
-            'host' => getenv('DB_HOST'),
-            'port' => (int) getenv('DB_PORT'),
-            'name' => getenv('DB_NAME'),
-            'user' => getenv('DB_USER'),
-            'pass' => getenv('DB_PASS'),
+            'host' => getenv('DB_HOST') ?: '127.0.0.1',
+            'port' => (int) getenv('DB_PORT') ?: 3306,
+            'name' => getenv('DB_NAME') ?: 'emas',
+            'user' => getenv('DB_USER') ?: 'root',
+            'pass' => getenv('DB_PASS') ?: '',
             'charset' => 'utf8mb4',
         ];
     }
@@ -104,7 +104,7 @@ class Database
     {
         self::$pdo = null;
     }
-}
+} 
 
 if (PHP_SAPI === 'cli') {
     $args = $argv ?? [];

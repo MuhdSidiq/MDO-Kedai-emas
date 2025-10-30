@@ -31,8 +31,8 @@ Create a web application for a gold shop (Kedai Emas).
 ### Phase 1: Database Setup
 - [✓] Draw SQL schema (drawsql.app/teams/wnh/diagrams/web-emas)
 - [✓] Fix foreign key bug in draw-sql.sql line 39 (should reference roles.id not roles.name)
-- [] Create database and run SQL script
-- [] Create seed data script for initial roles (Admin, Staff, Agent) and profit_margin entries
+- [✓] Create database and run SQL script
+- [✓] Create seed data script for initial roles (Admin, Staff, Agent) and profit_margin entries
 
 ### Phase 2: Backend Structure (PHP MVC)
 - [ ] Set up folder structure:
