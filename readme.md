@@ -56,7 +56,7 @@ Create a web application for a gold shop (Kedai Emas).
 - [ ] Create Router.php for URL routing
 - [ ] Set up autoloading and configuration files
 
-### Phase 3: Authentication & RBAC
+### Phase 3: Authentication & RBAC 
 - [ ] Create User model with methods: create, read, update, delete, findByEmail
 - [ ] Implement password hashing (password_hash/password_verify)
 - [ ] Build AuthController with login, logout, register methods

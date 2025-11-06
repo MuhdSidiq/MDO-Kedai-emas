@@ -35,7 +35,6 @@ try {
         }
     }
 
-    // Seed profit margins for Agent, Staff, Customer (percent as integer)
     $margins = [
         ['name' => 'Agent', 'rate' => 10],
         ['name' => 'Staff', 'rate' => 15],
