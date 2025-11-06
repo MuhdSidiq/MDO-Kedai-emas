@@ -163,7 +163,7 @@ class ProductController extends Controller
         }
 
         // Create product
-        $productId = $this->productModel->create($name, $description, $pricePerGram, $stock);
+        $productId = $this->productModel->createProduct($name, $description, $pricePerGram, $stock);
 
         if ($productId) {
             $this->flash('success', 'Product created successfully!');
@@ -254,7 +254,7 @@ class ProductController extends Controller
         }
 
         // Update product
-        $success = $this->productModel->update($productId, $name, $description, $pricePerGram, $stock);
+        $success = $this->productModel->updateProduct($productId, $name, $description, $pricePerGram, $stock);
 
         if ($success) {
             $this->flash('success', 'Product updated successfully!');
@@ -287,7 +287,7 @@ class ProductController extends Controller
             return;
         }
 
-        $success = $this->productModel->delete($productId);
+        $success = $this->productModel->deleteProduct($productId);
 
         if ($success) {
             $this->flash('success', 'Product deleted successfully!');

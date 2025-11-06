@@ -40,7 +40,7 @@ class Product extends Model
      * @param int $stock
      * @return int|false Returns the last insert ID or false on failure
      */
-    public function create(string $name, string $description, float $pricePerGram, int $stock): int|false
+    public function createProduct(string $name, string $description, float $pricePerGram, int $stock): int|false
     {
         try {
             return $this->insert([
@@ -65,7 +65,7 @@ class Product extends Model
      * @param int $stock
      * @return bool
      */
-    public function update(int $id, string $name, string $description, float $pricePerGram, int $stock): bool
+    public function updateProduct(int $id, string $name, string $description, float $pricePerGram, int $stock): bool
     {
         try {
             $affected = $this->updateById($id, [
@@ -88,7 +88,7 @@ class Product extends Model
      * @param int $id
      * @return bool
      */
-    public function delete(int $id): bool
+    public function deleteProduct(int $id): bool
     {
         try {
             $affected = $this->deleteById($id);
