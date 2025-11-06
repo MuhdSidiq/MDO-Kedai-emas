@@ -1,16 +1,17 @@
 <?php
 declare(strict_types=1);
 
-require_once __DIR__ . '/../config/connection.php';
+namespace App\Model;
 
-class Product
+/**
+ * Product Model
+ *
+ * Handles product data and business logic
+ */
+class Product extends Model
 {
-    private \PDO $db;
-
-    public function __construct()
-    {
-        $this->db = Database::getConnection();
-    }
+    protected string $table = 'product_data';
+    protected string $primaryKey = 'id';
 
     /**
      * Get all products
@@ -18,13 +19,7 @@ class Product
      */
     public function getAll(): array
     {
-        $stmt = $this->db->prepare("
-            SELECT id, name, description, price_per_gram, stock, timestamps
-            FROM product_data
-            ORDER BY timestamps DESC
-        ");
-        $stmt->execute();
-        return $stmt->fetchAll();
+        return $this->findAll(['*'], 'timestamps DESC');
     }
 
     /**
@@ -34,14 +29,7 @@ class Product
      */
     public function getById(int $id): ?array
     {
-        $stmt = $this->db->prepare("
-            SELECT id, name, description, price_per_gram, stock, timestamps
-            FROM product_data
-            WHERE id = :id
-        ");
-        $stmt->execute(['id' => $id]);
-        $result = $stmt->fetch();
-        return $result ?: null;
+        return $this->findById($id);
     }
 
     /**
@@ -55,19 +43,13 @@ class Product
     public function create(string $name, string $description, float $pricePerGram, int $stock): int|false
     {
         try {
-            $stmt = $this->db->prepare("
-                INSERT INTO product_data (name, description, price_per_gram, stock, timestamps)
-                VALUES (:name, :description, :price_per_gram, :stock, NOW())
-            ");
-
-            $result = $stmt->execute([
+            return $this->insert([
                 'name' => $name,
                 'description' => $description,
                 'price_per_gram' => $pricePerGram,
-                'stock' => $stock
+                'stock' => $stock,
+                'timestamps' => date('Y-m-d H:i:s')
             ]);
-
-            return $result ? (int)$this->db->lastInsertId() : false;
         } catch (\PDOException $e) {
             error_log("Product creation error: " . $e->getMessage());
             return false;
@@ -86,23 +68,15 @@ class Product
     public function update(int $id, string $name, string $description, float $pricePerGram, int $stock): bool
     {
         try {
-            $stmt = $this->db->prepare("
-                UPDATE product_data
-                SET name = :name,
-                    description = :description,
-                    price_per_gram = :price_per_gram,
-                    stock = :stock,
-                    timestamps = NOW()
-                WHERE id = :id
-            ");
-
-            return $stmt->execute([
-                'id' => $id,
+            $affected = $this->updateById($id, [
                 'name' => $name,
                 'description' => $description,
                 'price_per_gram' => $pricePerGram,
-                'stock' => $stock
+                'stock' => $stock,
+                'timestamps' => date('Y-m-d H:i:s')
             ]);
+
+            return $affected > 0;
         } catch (\PDOException $e) {
             error_log("Product update error: " . $e->getMessage());
             return false;
@@ -117,8 +91,8 @@ class Product
     public function delete(int $id): bool
     {
         try {
-            $stmt = $this->db->prepare("DELETE FROM product_data WHERE id = :id");
-            return $stmt->execute(['id' => $id]);
+            $affected = $this->deleteById($id);
+            return $affected > 0;
         } catch (\PDOException $e) {
             error_log("Product deletion error: " . $e->getMessage());
             return false;
@@ -134,13 +108,14 @@ class Product
     public function updateStock(int $id, int $quantity): bool
     {
         try {
-            $stmt = $this->db->prepare("
-                UPDATE product_data
+            $sql = "
+                UPDATE {$this->table}
                 SET stock = stock + :quantity,
                     timestamps = NOW()
-                WHERE id = :id
-            ");
+                WHERE {$this->primaryKey} = :id
+            ";
 
+            $stmt = $this->db->prepare($sql);
             return $stmt->execute([
                 'id' => $id,
                 'quantity' => $quantity
@@ -158,31 +133,31 @@ class Product
      */
     public function getLowStock(int $threshold = 10): array
     {
-        $stmt = $this->db->prepare("
+        $sql = "
             SELECT id, name, description, price_per_gram, stock, timestamps
-            FROM product_data
+            FROM {$this->table}
             WHERE stock <= :threshold
             ORDER BY stock ASC
-        ");
-        $stmt->execute(['threshold' => $threshold]);
-        return $stmt->fetchAll();
+        ";
+
+        return $this->query($sql, ['threshold' => $threshold]);
     }
 
     /**
-     * Search products by name
+     * Search products by name or description
      * @param string $searchTerm
      * @return array
      */
     public function search(string $searchTerm): array
     {
-        $stmt = $this->db->prepare("
+        $sql = "
             SELECT id, name, description, price_per_gram, stock, timestamps
-            FROM product_data
+            FROM {$this->table}
             WHERE name LIKE :search OR description LIKE :search
             ORDER BY timestamps DESC
-        ");
-        $stmt->execute(['search' => "%{$searchTerm}%"]);
-        return $stmt->fetchAll();
+        ";
+
+        return $this->query($sql, ['search' => "%{$searchTerm}%"]);
     }
 
     /**
@@ -191,9 +166,7 @@ class Product
      */
     public function getTotalCount(): int
     {
-        $stmt = $this->db->query("SELECT COUNT(*) as count FROM product_data");
-        $result = $stmt->fetch();
-        return (int)$result['count'];
+        return $this->count();
     }
 
     /**
@@ -202,11 +175,109 @@ class Product
      */
     public function getTotalStockValue(): float
     {
-        $stmt = $this->db->query("
+        $sql = "
             SELECT SUM(stock * price_per_gram) as total_value
-            FROM product_data
-        ");
-        $result = $stmt->fetch();
+            FROM {$this->table}
+        ";
+
+        $result = $this->queryOne($sql);
         return (float)($result['total_value'] ?? 0);
+    }
+
+    /**
+     * Get products in stock (stock > 0)
+     * @return array
+     */
+    public function getInStock(): array
+    {
+        $sql = "
+            SELECT id, name, description, price_per_gram, stock, timestamps
+            FROM {$this->table}
+            WHERE stock > 0
+            ORDER BY timestamps DESC
+        ";
+
+        return $this->query($sql);
+    }
+
+    /**
+     * Get out of stock products
+     * @return array
+     */
+    public function getOutOfStock(): array
+    {
+        return $this->findWhere(['stock' => 0], ['*'], 'timestamps DESC');
+    }
+
+    /**
+     * Reduce stock by quantity (with validation)
+     * @param int $id
+     * @param int $quantity
+     * @return bool Returns false if insufficient stock
+     */
+    public function reduceStock(int $id, int $quantity): bool
+    {
+        $product = $this->findById($id);
+
+        if (!$product) {
+            error_log("Product not found: ID {$id}");
+            return false;
+        }
+
+        if ($product['stock'] < $quantity) {
+            error_log("Insufficient stock for product ID {$id}. Available: {$product['stock']}, Requested: {$quantity}");
+            return false;
+        }
+
+        return $this->updateStock($id, -$quantity);
+    }
+
+    /**
+     * Add stock by quantity
+     * @param int $id
+     * @param int $quantity
+     * @return bool
+     */
+    public function addStock(int $id, int $quantity): bool
+    {
+        if ($quantity <= 0) {
+            error_log("Invalid quantity for adding stock: {$quantity}");
+            return false;
+        }
+
+        return $this->updateStock($id, $quantity);
+    }
+
+    /**
+     * Check if product is in stock
+     * @param int $id
+     * @return bool
+     */
+    public function isInStock(int $id): bool
+    {
+        $product = $this->findById($id);
+        return $product && $product['stock'] > 0;
+    }
+
+    /**
+     * Get products sorted by price (ascending or descending)
+     * @param string $order 'ASC' or 'DESC'
+     * @return array
+     */
+    public function getByPrice(string $order = 'ASC'): array
+    {
+        $order = strtoupper($order) === 'DESC' ? 'DESC' : 'ASC';
+        return $this->findAll(['*'], "price_per_gram {$order}");
+    }
+
+    /**
+     * Get products sorted by stock level
+     * @param string $order 'ASC' or 'DESC'
+     * @return array
+     */
+    public function getByStock(string $order = 'ASC'): array
+    {
+        $order = strtoupper($order) === 'DESC' ? 'DESC' : 'ASC';
+        return $this->findAll(['*'], "stock {$order}");
     }
 }

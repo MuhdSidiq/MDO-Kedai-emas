@@ -50,7 +50,7 @@ Create a web application for a gold shop (Kedai Emas).
     /images
   /vendor
   ```
-- [ ] Create Database.php class with PDO connection
+- [✓] Create Database.php class with PDO connection
 - [ ] Create base Model.php class for database operations
 - [ ] Create base Controller.php class
 - [ ] Create Router.php for URL routing

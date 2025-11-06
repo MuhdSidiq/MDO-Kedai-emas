@@ -14,7 +14,7 @@ $router->get('/', 'DashboardController', 'index', 'home');
 $router->get('/dashboard', 'DashboardController', 'index', 'dashboard');
 
 // Product Routes
-$router->get('/products', 'App\Controllers\ProductController', 'index', 'products.index');
+$router->get('/test', 'App\Controllers\ProductController', 'index', 'products.index');
 $router->get('/products/create', 'App\Controllers\ProductController', 'create', 'products.create');
 $router->post('/products/store', 'App\Controllers\ProductController', 'store', 'products.store');
 $router->get('/products/:id/edit', 'App\Controllers\ProductController', 'edit', 'products.edit');

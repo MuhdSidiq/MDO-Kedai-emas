@@ -1,13 +1,18 @@
 <?php
 declare(strict_types=1);
 
-require_once __DIR__ . '/../model/product.php';
+namespace App\Controller;
 
-class ProductController
+use App\Model\Product;
+
+/**
+ * Product Controller
+ *
+ * Handles product-related operations
+ */
+class ProductController extends Controller
 {
     private Product $productModel;
-    private array $errors = [];
-    private array $successMessages = [];
 
     public function __construct()
     {
@@ -19,61 +24,141 @@ class ProductController
      */
     public function index(): void
     {
-        $this->checkSessionMessages();
+        // $this->requireAuth();
 
-        $products = $this->productModel->getAll();
-        $totalCount = $this->productModel->getTotalCount();
-        $totalValue = $this->productModel->getTotalStockValue();
-        $controller = $this;
+        // Sample hardcoded data for testing
+        $products = [
+            [
+                'id' => 1,
+                'name' => 'Gold Bar 999.9',
+                'description' => 'Pure gold bar 999.9 fineness, certified by international standards',
+                'price_per_gram' => 285.50,
+                'stock' => 50,
+                'timestamps' => '2024-11-06 10:30:00'
+            ],
+            [
+                'id' => 2,
+                'name' => 'Gold Coin 1oz',
+                'description' => 'One ounce gold coin, collectible and investment grade',
+                'price_per_gram' => 290.00,
+                'stock' => 8,
+                'timestamps' => '2024-11-05 14:20:00'
+            ],
+            [
+                'id' => 3,
+                'name' => 'Gold Bracelet 916',
+                'description' => '22K gold bracelet, beautiful design with traditional patterns',
+                'price_per_gram' => 270.75,
+                'stock' => 120,
+                'timestamps' => '2024-11-04 09:15:00'
+            ],
+            [
+                'id' => 4,
+                'name' => 'Gold Necklace 750',
+                'description' => '18K gold necklace, elegant and durable for daily wear',
+                'price_per_gram' => 220.50,
+                'stock' => 65,
+                'timestamps' => '2024-11-03 16:45:00'
+            ],
+            [
+                'id' => 5,
+                'name' => 'Gold Ring 999',
+                'description' => 'Pure gold ring, simple and classic design',
+                'price_per_gram' => 285.00,
+                'stock' => 5,
+                'timestamps' => '2024-11-02 11:30:00'
+            ],
+        ];
 
-        require_once __DIR__ . '/../view/product/index.php';
+        $totalCount = count($products);
+        $totalValue = array_reduce($products, fn($sum, $p) => $sum + ($p['price_per_gram'] * $p['stock']), 0);
+        $lowStock = array_filter($products, fn($p) => $p['stock'] <= 10);
+
+        $this->view('product/index', [
+            'products' => $products,
+            'totalCount' => $totalCount,
+            'totalValue' => $totalValue,
+            'lowStock' => $lowStock
+        ]);
+    }
+
+    /**
+     * Show single product details
+     */
+    public function show(string $id): void
+    {
+        $this->requireAuth();
+
+        $productId = filter_var($id, FILTER_VALIDATE_INT);
+
+        if (!$productId) {
+            $this->flash('error', 'Invalid product ID');
+            $this->redirect('/products');
+            return;
+        }
+
+        $product = $this->productModel->getById($productId);
+
+        if (!$product) {
+            $this->error(404, 'Product not found');
+            return;
+        }
+
+        $this->view('product/show', [
+            'product' => $product
+        ]);
     }
 
     /**
      * Show create product form
      */
-    public function create(): void
+    public function createForm(): void
     {
-        $controller = $this;
-        require_once __DIR__ . '/../view/product/create.php';
+        $this->requireAuth();
+        $this->requireRole('Admin');
+
+        $this->view('product/create');
     }
 
     /**
      * Store a new product
      */
-    public function store(): void
+    public function create(): void
     {
-        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+        $this->requireAuth();
+        $this->requireRole('Admin');
+
+        if (!$this->isPost()) {
             $this->redirect('/products/create');
             return;
         }
 
-        // Validate input
-        $name = $this->sanitize($_POST['name'] ?? '');
-        $description = $this->sanitize($_POST['description'] ?? '');
-        $pricePerGram = filter_var($_POST['price_per_gram'] ?? 0, FILTER_VALIDATE_FLOAT);
-        $stock = filter_var($_POST['stock'] ?? 0, FILTER_VALIDATE_INT);
+        // Validate required fields
+        $required = ['name', 'description', 'price_per_gram', 'stock'];
+        $missing = $this->validateRequired($required);
 
-        if (empty($name)) {
-            $this->errors[] = "Product name is required";
+        if (!empty($missing)) {
+            $this->flash('error', 'Missing required fields: ' . implode(', ', $missing));
+            $this->redirect('/products/create');
+            return;
         }
 
-        if (empty($description)) {
-            $this->errors[] = "Product description is required";
-        }
+        // Sanitize and validate input
+        $name = $this->sanitize($this->post('name'));
+        $description = $this->sanitize($this->post('description'));
+        $pricePerGram = filter_var($this->post('price_per_gram'), FILTER_VALIDATE_FLOAT);
+        $stock = filter_var($this->post('stock'), FILTER_VALIDATE_INT);
 
+        // Additional validation
         if ($pricePerGram === false || $pricePerGram <= 0) {
-            $this->errors[] = "Valid price per gram is required";
+            $this->flash('error', 'Valid price per gram is required');
+            $this->redirect('/products/create');
+            return;
         }
 
         if ($stock === false || $stock < 0) {
-            $this->errors[] = "Valid stock quantity is required";
-        }
-
-        // If validation fails, show create form with errors
-        if (!empty($this->errors)) {
-            $controller = $this;
-            require_once __DIR__ . '/../view/product/create.php';
+            $this->flash('error', 'Valid stock quantity is required (must be 0 or greater)');
+            $this->redirect('/products/create');
             return;
         }
 
@@ -81,121 +166,133 @@ class ProductController
         $productId = $this->productModel->create($name, $description, $pricePerGram, $stock);
 
         if ($productId) {
-            $_SESSION['success'] = "Product created successfully!";
-            $this->redirect('/products');
+            $this->flash('success', 'Product created successfully!');
+            $this->redirect('/products/' . $productId);
         } else {
-            $this->errors[] = "Failed to create product. Please try again.";
-            $controller = $this;
-            require_once __DIR__ . '/../view/product/create.php';
+            $this->flash('error', 'Failed to create product. Please try again.');
+            $this->redirect('/products/create');
         }
     }
 
     /**
      * Show edit product form
      */
-    public function edit(string $id = ''): void
+    public function editForm(string $id): void
     {
-        $id = filter_var($id, FILTER_VALIDATE_INT);
+        $this->requireAuth();
+        $this->requireRole('Admin');
 
-        if (!$id) {
-            $_SESSION['error'] = "Invalid product ID";
+        $productId = filter_var($id, FILTER_VALIDATE_INT);
+
+        if (!$productId) {
+            $this->flash('error', 'Invalid product ID');
             $this->redirect('/products');
             return;
         }
 
-        $product = $this->productModel->getById($id);
+        $product = $this->productModel->getById($productId);
 
         if (!$product) {
-            $_SESSION['error'] = "Product not found";
+            $this->flash('error', 'Product not found');
             $this->redirect('/products');
             return;
         }
 
-        $controller = $this;
-        require_once __DIR__ . '/../view/product/edit.php';
+        $this->view('product/edit', [
+            'product' => $product
+        ]);
     }
 
     /**
      * Update an existing product
      */
-    public function update(string $id = ''): void
+    public function update(string $id): void
     {
-        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+        $this->requireAuth();
+        $this->requireRole('Admin');
+
+        if (!$this->isPost()) {
             $this->redirect('/products');
             return;
         }
 
-        $id = filter_var($id, FILTER_VALIDATE_INT);
+        $productId = filter_var($id, FILTER_VALIDATE_INT);
 
-        if (!$id) {
-            $_SESSION['error'] = "Invalid product ID";
+        if (!$productId) {
+            $this->flash('error', 'Invalid product ID');
             $this->redirect('/products');
             return;
         }
 
-        // Validate input
-        $name = $this->sanitize($_POST['name'] ?? '');
-        $description = $this->sanitize($_POST['description'] ?? '');
-        $pricePerGram = filter_var($_POST['price_per_gram'] ?? 0, FILTER_VALIDATE_FLOAT);
-        $stock = filter_var($_POST['stock'] ?? 0, FILTER_VALIDATE_INT);
+        // Validate required fields
+        $required = ['name', 'description', 'price_per_gram', 'stock'];
+        $missing = $this->validateRequired($required);
 
-        if (empty($name)) {
-            $this->errors[] = "Product name is required";
+        if (!empty($missing)) {
+            $this->flash('error', 'Missing required fields: ' . implode(', ', $missing));
+            $this->redirect('/products/' . $productId . '/edit');
+            return;
         }
 
-        if (empty($description)) {
-            $this->errors[] = "Product description is required";
-        }
+        // Sanitize and validate input
+        $name = $this->sanitize($this->post('name'));
+        $description = $this->sanitize($this->post('description'));
+        $pricePerGram = filter_var($this->post('price_per_gram'), FILTER_VALIDATE_FLOAT);
+        $stock = filter_var($this->post('stock'), FILTER_VALIDATE_INT);
 
+        // Additional validation
         if ($pricePerGram === false || $pricePerGram <= 0) {
-            $this->errors[] = "Valid price per gram is required";
+            $this->flash('error', 'Valid price per gram is required');
+            $this->redirect('/products/' . $productId . '/edit');
+            return;
         }
 
         if ($stock === false || $stock < 0) {
-            $this->errors[] = "Valid stock quantity is required";
-        }
-
-        // If validation fails, show edit form with errors
-        if (!empty($this->errors)) {
-            $product = $this->productModel->getById($id);
-            $controller = $this;
-            require_once __DIR__ . '/../view/product/edit.php';
+            $this->flash('error', 'Valid stock quantity is required (must be 0 or greater)');
+            $this->redirect('/products/' . $productId . '/edit');
             return;
         }
 
         // Update product
-        $success = $this->productModel->update($id, $name, $description, $pricePerGram, $stock);
+        $success = $this->productModel->update($productId, $name, $description, $pricePerGram, $stock);
 
         if ($success) {
-            $_SESSION['success'] = "Product updated successfully!";
-            $this->redirect('/products');
+            $this->flash('success', 'Product updated successfully!');
+            $this->redirect('/products/' . $productId);
         } else {
-            $this->errors[] = "Failed to update product. Please try again.";
-            $product = $this->productModel->getById($id);
-            $controller = $this;
-            require_once __DIR__ . '/../view/product/edit.php';
+            $this->flash('error', 'Failed to update product. Please try again.');
+            $this->redirect('/products/' . $productId . '/edit');
         }
     }
 
     /**
      * Delete a product
      */
-    public function delete(string $id = ''): void
+    public function delete(string $id): void
     {
-        $id = filter_var($id, FILTER_VALIDATE_INT);
+        $this->requireAuth();
+        $this->requireRole('Admin');
 
-        if (!$id) {
-            $_SESSION['error'] = "Invalid product ID";
+        if (!$this->isPost()) {
+            $this->flash('error', 'Invalid request method');
             $this->redirect('/products');
             return;
         }
 
-        $success = $this->productModel->delete($id);
+        $productId = filter_var($id, FILTER_VALIDATE_INT);
+
+        if (!$productId) {
+            $this->flash('error', 'Invalid product ID');
+            $this->redirect('/products');
+            return;
+        }
+
+        $success = $this->productModel->delete($productId);
 
         if ($success) {
-            $_SESSION['success'] = "Product deleted successfully!";
+            $this->flash('success', 'Product deleted successfully!');
         } else {
-            $_SESSION['error'] = "Failed to delete product. Please try again.";
+            $this->flash('error', 'Failed to delete product. Please try again.');
         }
 
         $this->redirect('/products');
@@ -206,7 +303,9 @@ class ProductController
      */
     public function search(): void
     {
-        $searchTerm = $this->sanitize($_GET['q'] ?? '');
+        $this->requireAuth();
+
+        $searchTerm = $this->sanitize($this->get('q', ''));
 
         if (empty($searchTerm)) {
             $this->redirect('/products');
@@ -216,56 +315,171 @@ class ProductController
         $products = $this->productModel->search($searchTerm);
         $totalCount = $this->productModel->getTotalCount();
         $totalValue = $this->productModel->getTotalStockValue();
-        $controller = $this;
-        require_once __DIR__ . '/../view/product/index.php';
+
+        $this->view('product/index', [
+            'products' => $products,
+            'totalCount' => $totalCount,
+            'totalValue' => $totalValue,
+            'searchTerm' => $searchTerm
+        ]);
     }
 
     /**
-     * Get error messages
+     * Update stock (AJAX endpoint)
      */
-    public function getErrors(): array
+    public function updateStock(string $id): void
     {
-        return $this->errors;
-    }
+        $this->requireAuth();
+        $this->requireRole('Admin');
 
-    /**
-     * Get success messages
-     */
-    public function getSuccessMessages(): array
-    {
-        return $this->successMessages;
-    }
-
-    /**
-     * Sanitize user input
-     */
-    private function sanitize(string $data): string
-    {
-        return htmlspecialchars(strip_tags(trim($data)), ENT_QUOTES, 'UTF-8');
-    }
-
-    /**
-     * Redirect helper
-     */
-    private function redirect(string $url): void
-    {
-        header("Location: {$url}");
-        exit;
-    }
-
-    /**
-     * Check for session messages and add to errors/success
-     */
-    public function checkSessionMessages(): void
-    {
-        if (isset($_SESSION['error'])) {
-            $this->errors[] = $_SESSION['error'];
-            unset($_SESSION['error']);
+        if (!$this->isPost() || !$this->isAjax()) {
+            $this->json(['error' => true, 'message' => 'Invalid request'], 400);
+            return;
         }
 
-        if (isset($_SESSION['success'])) {
-            $this->successMessages[] = $_SESSION['success'];
-            unset($_SESSION['success']);
+        $productId = filter_var($id, FILTER_VALIDATE_INT);
+
+        if (!$productId) {
+            $this->json(['error' => true, 'message' => 'Invalid product ID'], 400);
+            return;
         }
+
+        $quantity = filter_var($this->post('quantity'), FILTER_VALIDATE_INT);
+
+        if ($quantity === false) {
+            $this->json(['error' => true, 'message' => 'Invalid quantity'], 400);
+            return;
+        }
+
+        $success = $this->productModel->updateStock($productId, $quantity);
+
+        if ($success) {
+            $product = $this->productModel->getById($productId);
+            $this->json([
+                'success' => true,
+                'message' => 'Stock updated successfully',
+                'product' => $product
+            ]);
+        } else {
+            $this->json(['error' => true, 'message' => 'Failed to update stock'], 500);
+        }
+    }
+
+    /**
+     * Add stock to product
+     */
+    public function addStock(string $id): void
+    {
+        $this->requireAuth();
+        $this->requireRole('Admin');
+
+        if (!$this->isPost()) {
+            $this->flash('error', 'Invalid request method');
+            $this->redirect('/products');
+            return;
+        }
+
+        $productId = filter_var($id, FILTER_VALIDATE_INT);
+
+        if (!$productId) {
+            $this->flash('error', 'Invalid product ID');
+            $this->redirect('/products');
+            return;
+        }
+
+        $quantity = filter_var($this->post('quantity'), FILTER_VALIDATE_INT);
+
+        if ($quantity === false || $quantity <= 0) {
+            $this->flash('error', 'Valid quantity is required (must be greater than 0)');
+            $this->redirect('/products/' . $productId);
+            return;
+        }
+
+        $success = $this->productModel->addStock($productId, $quantity);
+
+        if ($success) {
+            $this->flash('success', "Successfully added {$quantity} units to stock");
+        } else {
+            $this->flash('error', 'Failed to add stock');
+        }
+
+        $this->redirect('/products/' . $productId);
+    }
+
+    /**
+     * Reduce stock from product
+     */
+    public function reduceStock(string $id): void
+    {
+        $this->requireAuth();
+        $this->requireRole('Admin');
+
+        if (!$this->isPost()) {
+            $this->flash('error', 'Invalid request method');
+            $this->redirect('/products');
+            return;
+        }
+
+        $productId = filter_var($id, FILTER_VALIDATE_INT);
+
+        if (!$productId) {
+            $this->flash('error', 'Invalid product ID');
+            $this->redirect('/products');
+            return;
+        }
+
+        $quantity = filter_var($this->post('quantity'), FILTER_VALIDATE_INT);
+
+        if ($quantity === false || $quantity <= 0) {
+            $this->flash('error', 'Valid quantity is required (must be greater than 0)');
+            $this->redirect('/products/' . $productId);
+            return;
+        }
+
+        $success = $this->productModel->reduceStock($productId, $quantity);
+
+        if ($success) {
+            $this->flash('success', "Successfully reduced {$quantity} units from stock");
+        } else {
+            $this->flash('error', 'Failed to reduce stock (insufficient quantity or product not found)');
+        }
+
+        $this->redirect('/products/' . $productId);
+    }
+
+    /**
+     * Get low stock products
+     */
+    public function lowStock(): void
+    {
+        $this->requireAuth();
+
+        $threshold = filter_var($this->get('threshold', 10), FILTER_VALIDATE_INT);
+        $threshold = $threshold ?: 10;
+
+        $products = $this->productModel->getLowStock($threshold);
+        $totalCount = count($products);
+
+        $this->view('product/low-stock', [
+            'products' => $products,
+            'totalCount' => $totalCount,
+            'threshold' => $threshold
+        ]);
+    }
+
+    /**
+     * Get out of stock products
+     */
+    public function outOfStock(): void
+    {
+        $this->requireAuth();
+
+        $products = $this->productModel->getOutOfStock();
+        $totalCount = count($products);
+
+        $this->view('product/out-of-stock', [
+            'products' => $products,
+            'totalCount' => $totalCount
+        ]);
     }
 }

@@ -16,23 +16,11 @@
             </div>
         </div>
 
-        <?php if (isset($controller) && !empty($controller->getErrors())): ?>
-            <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                <strong>Error!</strong>
-                <ul class="mb-0">
-                    <?php foreach ($controller->getErrors() as $error): ?>
-                        <li><?= htmlspecialchars($error) ?></li>
-                    <?php endforeach; ?>
-                </ul>
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-            </div>
-        <?php endif; ?>
-
-        <?php if (isset($controller) && !empty($controller->getSuccessMessages())): ?>
-            <div class="alert alert-success alert-dismissible fade show" role="alert">
-                <?php foreach ($controller->getSuccessMessages() as $message): ?>
-                    <div><?= htmlspecialchars($message) ?></div>
-                <?php endforeach; ?>
+        <?php $flash = get_flash(); ?>
+        <?php if ($flash): ?>
+            <div class="alert alert-<?= $flash['type'] === 'error' ? 'danger' : $flash['type'] ?> alert-dismissible fade show" role="alert">
+                <strong><?= $flash['type'] === 'error' ? 'Error!' : 'Success!' ?></strong>
+                <?= e($flash['message']) ?>
                 <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
             </div>
         <?php endif; ?>
@@ -118,14 +106,18 @@
                                         <td><?= htmlspecialchars($product['timestamps']) ?></td>
                                         <td>
                                             <div class="btn-group" role="group">
+                                                <a href="/products/<?= $product['id'] ?>" class="btn btn-sm btn-info">
+                                                    <i class="bi bi-eye"></i>
+                                                </a>
                                                 <a href="/products/<?= $product['id'] ?>/edit" class="btn btn-sm btn-warning">
-                                                    <i class="bi bi-pencil"></i> Edit
+                                                    <i class="bi bi-pencil"></i>
                                                 </a>
-                                                <a href="/products/<?= $product['id'] ?>/delete"
-                                                   class="btn btn-sm btn-danger"
-                                                   onclick="return confirm('Are you sure you want to delete this product?')">
-                                                    <i class="bi bi-trash"></i> Delete
-                                                </a>
+                                                <form method="POST" action="/products/<?= $product['id'] ?>/delete" style="display: inline;">
+                                                    <?= csrf_field() ?>
+                                                    <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure you want to delete this product?')">
+                                                        <i class="bi bi-trash"></i>
+                                                    </button>
+                                                </form>
                                             </div>
                                         </td>
                                     </tr>

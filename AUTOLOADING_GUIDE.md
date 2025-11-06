@@ -2,7 +2,7 @@
 
 ## Overview
 
-Your application now uses **PSR-4 autoloading** with **Composer** for modern PHP development. This guide explains how everything works and how to use it.
+Your Kedai Emas application now uses **PSR-4 autoloading** with both **Composer** and a **custom autoloader** for modern PHP development. This guide explains how everything works and how to use it.
 
 ---
 
@@ -10,70 +10,112 @@ Your application now uses **PSR-4 autoloading** with **Composer** for modern PHP
 
 ```
 emas/
+├── app/
+│   ├── config/
+│   │   ├── Config.php           # Configuration manager
+│   │   ├── Router.php           # Router class
+│   │   └── connection.php       # Database connection
+│   ├── controller/
+│   │   ├── Controller.php       # Base controller class
+│   │   ├── ProductController.php
+│   │   ├── UserController.php
+│   │   ├── RoleController.php
+│   │   ├── ProfitMarginController.php
+│   │   └── ContactController.php
+│   ├── model/
+│   │   ├── Model.php            # Base model class
+│   │   ├── product.php          # Product model
+│   │   ├── user.php             # User model
+│   │   ├── role.php
+│   │   ├── profit_margin.php
+│   │   └── contact_submission.php
+│   ├── middleware/              # Middleware (for future)
+│   └── view/                    # View templates
+│       └── layouts/             # Layout files
 ├── bootstrap/
-│   └── app.php              # Application bootstrap
+│   ├── app.php                  # Application bootstrap
+│   ├── autoload.php             # PSR-4 autoloader
+│   ├── env.php                  # Environment loader
+│   └── helpers.php              # Helper functions
 ├── config/
-│   ├── routes.php           # Route definitions (old structure)
-│   ├── Router.php           # Old router (deprecated)
-│   └── connection.php       # Old database (deprecated)
-├── src/                     # NEW PSR-4 Structure
-│   ├── Config/
-│   │   ├── Config.php       # Configuration manager
-│   │   ├── Database.php     # Database connection
-│   │   └── Router.php       # Router class
-│   ├── Controllers/
-│   │   └── ProductController.php
-│   ├── Models/
-│   │   └── Product.php
-│   ├── Helpers/
-│   │   └── helpers.php      # Utility functions
-│   └── Middleware/          # (empty, for future)
-├── vendor/                  # Composer dependencies
-├── view/                    # Views (unchanged)
-├── composer.json            # Composer configuration
-├── composer.lock            # Locked dependencies
-├── .env                     # Environment variables
-├── .env.example             # Environment template
-└── index.php                # Application entry point
+│   └── routes.php               # Route definitions
+├── public/                      # Public assets (CSS, JS, images)
+├── vendor/                      # Composer dependencies
+├── .env                         # Environment variables
+├── .env.example                 # Environment template
+├── composer.json                # Composer configuration
+├── index.php                    # Application entry point
+└── MVC_SETUP.md                 # MVC documentation
 ```
 
 ---
 
-## 1. Composer Autoloading
+## 1. Autoloading System
 
-### What is PSR-4?
+### Dual Autoloader Support
 
-PSR-4 is a standard that maps PHP namespaces to directory structures:
+Your application supports **two autoloading methods**:
 
+1. **Custom PSR-4 Autoloader** (`bootstrap/autoload.php`) - Built-in, no dependencies
+2. **Composer Autoloader** (`vendor/autoload.php`) - Full-featured, with package support
+
+### Custom PSR-4 Autoloader
+
+**Configuration (`bootstrap/autoload.php`):**
+
+```php
+spl_autoload_register(function ($class) {
+    $prefix = 'App\\';
+    $baseDir = __DIR__ . '/../app/';
+
+    $len = strlen($prefix);
+    if (strncmp($prefix, $class, $len) !== 0) {
+        return;
+    }
+
+    $relativeClass = substr($class, $len);
+    $file = $baseDir . str_replace('\\', '/', $relativeClass) . '.php';
+
+    if (file_exists($file)) {
+        require $file;
+    }
+});
 ```
-Namespace: App\Controllers\ProductController
-File Path: src/Controllers/ProductController.php
-```
 
-### Configuration (`composer.json`)
+**Namespace Mapping:**
+- `App\Model\*` → `app/model/*.php`
+- `App\Controller\*` → `app/controller/*.php`
+- `App\Config\*` → `app/config/*.php`
+- `App\Middleware\*` → `app/middleware/*.php`
+
+### Composer Autoloader
+
+**Configuration (`composer.json`):**
 
 ```json
 {
     "autoload": {
         "psr-4": {
-            "App\\": "src/"
+            "App\\": "app/"
         },
         "files": [
-            "src/Helpers/helpers.php"
+            "bootstrap/helpers.php"
         ]
     }
 }
 ```
 
-- `App\` namespace maps to `src/` directory
-- `helpers.php` is loaded automatically (utility functions)
+After modifying `composer.json`, run:
+```bash
+composer dump-autoload
+```
 
 ### Using Classes with Autoloading
 
 **Before (Manual require):**
 ```php
-require_once 'model/product.php';
-require_once 'controller/ProductController.php';
+require_once 'src/model/product.php';
+require_once 'src/controller/ProductController.php';
 
 $product = new Product();
 $controller = new ProductController();
@@ -81,25 +123,22 @@ $controller = new ProductController();
 
 **After (Autoloading):**
 ```php
-use App\Models\Product;
-use App\Controllers\ProductController;
+use App\Model\Product;
+use App\Controller\ProductController;
 
 $product = new Product();
 $controller = new ProductController();
 ```
 
-No manual `require` needed! Composer handles it.
+No manual `require` needed! The autoloader handles it automatically.
 
 ---
 
 ## 2. Configuration System
 
-### Config Class (`src/Config/Config.php`)
+### Config Class (`app/config/Config.php`)
 
-Centralized configuration management with:
-- Environment variable loading
-- Dot notation support
-- Type-safe helpers
+Centralized configuration management with environment variable support.
 
 ### Usage Examples
 
@@ -109,207 +148,385 @@ use App\Config\Config;
 // Get any config value
 $dbHost = Config::get('DB_HOST', '127.0.0.1');
 
-// Get grouped configs
-$db = Config::database();
-// Returns: ['host' => '...', 'port' => 3306, ...]
+// Get application name
+$appName = Config::getAppName(); // "Kedai Emas"
 
-$app = Config::app();
-// Returns: ['name' => 'Kedai Emas', 'env' => 'development', ...]
-
-// Dot notation
-$host = Config::get('database.host');
-$appName = Config::get('app.name');
+// Get environment
+$env = Config::getAppEnv(); // "development" or "production"
 
 // Check environment
 if (Config::isDevelopment()) {
     // Development-only code
+    error_log("Debug mode enabled");
 }
 
 if (Config::isProduction()) {
     // Production-only code
+    ini_set('display_errors', '0');
 }
+
+// Check debug mode
+if (Config::isDebug()) {
+    dd($debugData);
+}
+
+// Get database configuration
+$db = Config::getDatabase();
+// Returns: ['host' => '127.0.0.1', 'port' => 3306, 'name' => 'emas', ...]
+
+// Get session configuration
+$session = Config::getSession();
+// Returns: ['lifetime' => 7200, 'path' => '/', ...]
+
+// Get Metal Price API configuration
+$api = Config::getMetalPriceApi();
+// Returns: ['api_key' => '...', 'api_url' => 'https://...']
+
+// Get all configuration
+$allConfig = Config::all();
 ```
 
 ### Environment Variables (`.env`)
 
 ```env
-# Application
+# Application Configuration
 APP_NAME="Kedai Emas"
 APP_ENV=development
 APP_DEBUG=true
 APP_URL=http://localhost
+APP_TIMEZONE=Asia/Kuala_Lumpur
 
-# Database
+# Database Configuration
 DB_HOST=127.0.0.1
 DB_PORT=3306
 DB_NAME=emas
 DB_USER=root
 DB_PASS=
+DB_CHARSET=utf8mb4
 
-# Session
+# Session Configuration
 SESSION_LIFETIME=7200
+SESSION_PATH=/
+SESSION_DOMAIN=
 SESSION_SECURE=false
+SESSION_HTTPONLY=true
+
+# API Configuration (Metal Price API)
+METAL_PRICE_API_KEY=
+METAL_PRICE_API_URL=https://api.metalpriceapi.com/v1
 ```
 
 ---
 
-## 3. Database Connection
+## 3. Base Model Class
 
-### Database Class (`src/Config/Database.php`)
+### Model Class (`app/model/Model.php`)
 
-Modern database management with:
-- Singleton pattern (single connection)
-- PDO with prepared statements
-- Migration support
+Abstract base class providing common database operations for all models.
 
-### Usage Examples
+### Available Methods
 
 ```php
-use App\Config\Database;
+use App\Model\Model;
 
-// Get connection
-$pdo = Database::getConnection();
+// CRUD Operations
+$model->findAll();                        // Get all records
+$model->findById($id);                    // Find by primary key
+$model->findWhere($conditions);           // Find by conditions
+$model->findOne($conditions);             // Find single record
+$model->insert($data);                    // Insert new record
+$model->update($data, $conditions);       // Update records
+$model->updateById($id, $data);          // Update by ID
+$model->delete($conditions);              // Delete records
+$model->deleteById($id);                  // Delete by ID
+$model->count($conditions);               // Count records
 
-// Test connection
-if (Database::testConnection()) {
-    echo "Connected!";
-}
+// Custom Queries
+$model->query($sql, $params);             // Execute custom query
+$model->queryOne($sql, $params);          // Execute and get one result
 
-// Create database
-Database::ensureDatabaseExists();
-
-// Run migrations
-Database::runMigrations('draw-sql.sql');
+// Transactions
+$model->beginTransaction();
+$model->commit();
+$model->rollback();
 ```
 
-### In Models
+### Creating a Model
 
 ```php
-namespace App\Models;
+<?php
+declare(strict_types=1);
 
-use App\Config\Database;
-use PDO;
+namespace App\Model;
 
-class Product
+class Product extends Model
 {
-    private PDO $db;
+    protected string $table = 'product_data';
+    protected string $primaryKey = 'id';
+
+    public function findByName(string $name): array
+    {
+        return $this->findWhere(['name' => $name]);
+    }
+
+    public function getLowStock(int $threshold = 10): array
+    {
+        $sql = "SELECT * FROM {$this->table} WHERE stock <= :threshold";
+        return $this->query($sql, ['threshold' => $threshold]);
+    }
+}
+```
+
+**File Location:** `app/model/Product.php`
+
+---
+
+## 4. Base Controller Class
+
+### Controller Class (`app/controller/Controller.php`)
+
+Abstract base class providing common functionality for all controllers.
+
+### Available Methods
+
+```php
+use App\Controller\Controller;
+
+// View Rendering
+$this->view('product/index', $data);              // Render view
+$this->view('product/show', $data, 'admin');      // Render with custom layout
+$this->view('product/show', $data, null);         // Render without layout
+
+// Response Methods
+$this->json($data, 200);                          // Return JSON response
+$this->redirect('/products');                      // Redirect to URL
+$this->error(404, 'Not found');                   // Show error page
+
+// Request Helpers
+$this->getMethod();                               // Get HTTP method
+$this->isPost();                                  // Check if POST
+$this->isGet();                                   // Check if GET
+$this->isAjax();                                  // Check if AJAX
+
+// Input Retrieval
+$this->post('name');                              // Get POST data
+$this->get('id');                                 // Get GET data
+$this->input('search');                           // Get from POST or GET
+$this->post();                                    // Get all POST data
+$this->get();                                     // Get all GET data
+
+// Validation
+$missing = $this->validateRequired(['name', 'email'], $_POST);
+
+// Flash Messages
+$this->flash('success', 'Product created!');
+$this->flash('error', 'Validation failed');
+$flash = $this->getFlash();
+
+// Input Sanitization
+$clean = $this->sanitize($userInput);
+
+// Authentication & Authorization
+$user = $this->getUser();                         // Get authenticated user
+$this->isAuthenticated();                         // Check if logged in
+$this->requireAuth('/login');                     // Require login
+$this->hasRole('Admin');                          // Check role
+$this->requireRole('Admin');                      // Require role
+```
+
+### Creating a Controller
+
+```php
+<?php
+declare(strict_types=1);
+
+namespace App\Controller;
+
+use App\Model\Product;
+
+class ProductController extends Controller
+{
+    private Product $productModel;
 
     public function __construct()
     {
-        $this->db = Database::getConnection();
+        $this->productModel = new Product();
     }
 
-    public function getAll(): array
+    public function index(): void
     {
-        $stmt = $this->db->prepare("SELECT * FROM product_data");
-        $stmt->execute();
-        return $stmt->fetchAll();
+        $this->requireAuth();
+
+        $products = $this->productModel->getAll();
+
+        $this->view('product/index', [
+            'products' => $products
+        ]);
+    }
+
+    public function create(): void
+    {
+        $this->requireAuth();
+        $this->requireRole('Admin');
+
+        if (!$this->isPost()) {
+            $this->redirect('/products/create');
+            return;
+        }
+
+        $name = $this->sanitize($this->post('name'));
+        $description = $this->sanitize($this->post('description'));
+
+        $id = $this->productModel->create($name, $description, 0, 0);
+
+        if ($id) {
+            $this->flash('success', 'Product created!');
+            $this->redirect('/products/' . $id);
+        } else {
+            $this->flash('error', 'Failed to create product');
+            $this->redirect('/products/create');
+        }
     }
 }
 ```
 
+**File Location:** `app/controller/ProductController.php`
+
 ---
 
-## 4. Router System
+## 5. Router System
 
-### Router Class (`src/Config/Router.php`)
+### Router Class (`app/config/Router.php`)
 
-RESTful routing with:
-- HTTP method support (GET, POST, ANY)
-- Dynamic parameters (`:id`)
-- Named routes
-- Automatic controller instantiation
+RESTful routing system with dynamic parameters and controller dispatching.
 
 ### Defining Routes (`config/routes.php`)
 
 ```php
 use App\Config\Router;
 
-// GET /products -> ProductController::index()
-$router->get('/products', 'App\Controllers\ProductController', 'index', 'products.index');
+// Assuming $router is initialized in index.php
 
-// GET /products/:id/edit -> ProductController::edit($id)
-$router->get('/products/:id/edit', 'App\Controllers\ProductController', 'edit', 'products.edit');
+// GET Routes
+$router->get('/', 'HomeController@index');
+$router->get('/products', 'ProductController@index');
+$router->get('/products/{id}', 'ProductController@show');
+$router->get('/products/{id}/edit', 'ProductController@editForm');
 
-// POST /products/store -> ProductController::store()
-$router->post('/products/store', 'App\Controllers\ProductController', 'store', 'products.store');
+// POST Routes
+$router->post('/products', 'ProductController@create');
+$router->post('/products/{id}', 'ProductController@update');
+$router->post('/products/{id}/delete', 'ProductController@delete');
+
+// Multiple Methods
+$router->match(['GET', 'POST'], '/contact', 'ContactController@handle');
+
+// Any Method
+$router->any('/webhook', 'WebhookController@handle');
+
+// Custom 404
+$router->set404('ErrorController@notFound');
+
+// Set Base Path (if in subdirectory)
+$router->setBasePath('/emas');
 ```
 
-### Using in Controllers
+### Dynamic Route Parameters
 
 ```php
-namespace App\Controllers;
+// Route definition
+$router->get('/users/{userId}/posts/{postId}', 'PostController@show');
 
-class ProductController
+// Controller method
+public function show(string $userId, string $postId): void
 {
-    // Route: GET /products/:id/edit
-    // URL:   /products/123/edit
-    public function edit(string $id = ''): void
-    {
-        // $id automatically receives '123'
-        $productId = (int) $id;
-        // ...
-    }
+    $user = $this->userModel->findById((int)$userId);
+    $post = $this->postModel->findById((int)$postId);
+    // ...
 }
 ```
 
 ---
 
-## 5. Helper Functions
+## 6. Helper Functions
 
-### Available Helpers (`src/Helpers/helpers.php`)
+### Available Helpers (`bootstrap/helpers.php`)
 
+#### Configuration
 ```php
-// Configuration
-$value = env('DB_HOST', 'localhost');
-$value = config('app.name');
+env('DB_HOST', 'localhost');                // Get environment variable
+config('APP_NAME', 'Default');              // Get config value
+```
 
-// Debugging
-dd($variable);           // Dump and die
-dump($variable);         // Dump
+#### URLs
+```php
+base_url('/products');                      // http://localhost/products
+asset('css/style.css');                     // http://localhost/public/css/style.css
+redirect('/products', 302);                 // Redirect to URL
+```
 
-// Redirect
-redirect('/products');
-redirect('/products', 301);
+#### Debugging
+```php
+dd($variable);                              // Dump and die
+dump($variable);                            // Dump variable
+```
 
-// Session
-$value = session('user_id');
-session('user_id', 123);  // Set value
-$all = session();         // Get all
+#### Forms
+```php
+csrf_token();                               // Generate CSRF token
+csrf_field();                               // <input type="hidden" name="csrf_token" ...>
+verify_csrf($token);                        // Verify CSRF token
+old('name', 'default');                     // Get old input value
+```
 
-// Forms
-$token = csrf_token();
-echo csrf_field();  // Outputs: <input type="hidden" name="_token" value="...">
+#### Sanitization
+```php
+escape($string);                            // Escape HTML
+e($string);                                 // Alias for escape()
+```
 
-// Utilities
-$clean = sanitize($userInput);
-$url = url('/products');
-$asset = asset('css/style.css');
-$path = base_path('logs/app.log');
-$date = now('Y-m-d H:i:s');
-$price = format_currency(123.45);  // RM 123.45
+#### Authentication
+```php
+auth_user();                                // Get authenticated user
+is_authenticated();                         // Check if logged in
+```
 
-// Errors
-abort(404, 'Not found');
+#### Flash Messages
+```php
+flash('success', 'Product created!');       // Set flash message
+$flash = get_flash();                       // Get and clear flash message
+```
+
+#### Currency & Gold Price
+```php
+format_currency(123.45);                    // RM 123.45
+format_currency(123.45, false);             // 123.45
+calculate_gold_price(8000, 5);              // Calculate with 5% margin
 ```
 
 ---
 
-## 6. Bootstrap Process
+## 7. Bootstrap Process
 
 ### Application Flow
 
 ```
-1. index.php
+1. index.php (Entry Point)
    ├─> bootstrap/app.php
-   │   ├─> vendor/autoload.php (Composer autoloader)
-   │   ├─> Config::load() (Load .env)
-   │   ├─> Set timezone
-   │   ├─> Configure error reporting
+   │   ├─> Load environment variables (bootstrap/env.php)
+   │   ├─> Register autoloader (bootstrap/autoload.php)
+   │   ├─> Load helper functions (bootstrap/helpers.php)
+   │   ├─> Configure error reporting (based on APP_ENV)
+   │   ├─> Set timezone (from APP_TIMEZONE)
    │   └─> Start session
    ├─> Initialize Router
-   ├─> Load routes
-   └─> Dispatch request
+   ├─> Load routes (config/routes.php)
+   └─> Dispatch request (Router->dispatch())
+       ├─> Match URL to route
+       ├─> Extract parameters
+       ├─> Instantiate controller
+       ├─> Call controller method
+       └─> Return response
 ```
 
 ### Bootstrap File (`bootstrap/app.php`)
@@ -318,104 +535,73 @@ abort(404, 'Not found');
 <?php
 declare(strict_types=1);
 
-// Load Composer autoloader
-require_once __DIR__ . '/../vendor/autoload.php';
+// Define constants
+define('ROOT_DIR', dirname(__DIR__));
+define('APP_DIR', ROOT_DIR . '/app');
+define('PUBLIC_DIR', ROOT_DIR . '/public');
+define('CONFIG_DIR', ROOT_DIR . '/config');
 
-use App\Config\Config;
-use App\Config\Database;
+// Load environment variables
+require_once __DIR__ . '/env.php';
 
-// Load configuration
-Config::load();
+// Register autoloader
+require_once __DIR__ . '/autoload.php';
 
-// Set timezone
-date_default_timezone_set(Config::get('APP_TIMEZONE', 'Asia/Kuala_Lumpur'));
+// Load helper functions
+require_once __DIR__ . '/helpers.php';
 
-// Error reporting
-if (Config::isDevelopment()) {
+// Error reporting based on environment
+if (getenv('APP_ENV') === 'development') {
     error_reporting(E_ALL);
     ini_set('display_errors', '1');
+} else {
+    error_reporting(E_ALL & ~E_DEPRECATED & ~E_STRICT);
+    ini_set('display_errors', '0');
+    ini_set('log_errors', '1');
 }
+
+// Set timezone
+date_default_timezone_set(getenv('APP_TIMEZONE') ?: 'Asia/Kuala_Lumpur');
 
 // Start session
-session_start();
-
-return true;
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 ```
 
----
-
-## 7. Creating New Components
-
-### New Model
+### Entry Point (`index.php`)
 
 ```php
 <?php
 declare(strict_types=1);
 
-namespace App\Models;
+// Bootstrap the application
+require_once __DIR__ . '/bootstrap/app.php';
 
-use App\Config\Database;
-use PDO;
+use App\Config\Router;
 
-class User
-{
-    private PDO $db;
+// Initialize Router
+$router = new Router();
 
-    public function __construct()
-    {
-        $this->db = Database::getConnection();
-    }
+// Load routes
+require_once __DIR__ . '/config/routes.php';
 
-    public function getAll(): array
-    {
-        $stmt = $this->db->prepare("SELECT * FROM users");
-        $stmt->execute();
-        return $stmt->fetchAll();
-    }
+// Dispatch the request
+try {
+    $router->dispatch();
+} catch (Throwable $e) {
+    // Handle errors
+    error_log("Application Error: " . $e->getMessage());
+    http_response_code(500);
+    echo "An error occurred";
 }
-```
-
-**File Location:** `src/Models/User.php`
-
-### New Controller
-
-```php
-<?php
-declare(strict_types=1);
-
-namespace App\Controllers;
-
-use App\Models\User;
-
-class UserController
-{
-    private User $userModel;
-
-    public function __construct()
-    {
-        $this->userModel = new User();
-    }
-
-    public function index(): void
-    {
-        $users = $this->userModel->getAll();
-        require_once view_path('user/index.php');
-    }
-}
-```
-
-**File Location:** `src/Controllers/UserController.php`
-
-### Register Routes
-
-```php
-// In config/routes.php
-$router->get('/users', 'App\Controllers\UserController', 'index', 'users.index');
 ```
 
 ---
 
 ## 8. Composer Commands
+
+### Basic Commands
 
 ```bash
 # Install dependencies
@@ -424,124 +610,226 @@ composer install
 # Update dependencies
 composer update
 
-# Regenerate autoloader
+# Regenerate autoloader (after adding new classes)
 composer dump-autoload
 
-# Run database setup
+# Optimize autoloader for production
+composer dump-autoload --optimize
+```
+
+### Custom Scripts (from composer.json)
+
+```bash
+# Database setup (create DB + run migrations)
 composer db:setup
 
-# Run migrations
-composer db:migrate
+# Create database only
+composer db:create
 
-# Run database seed
-composer db:seed
+# Run migrations only
+composer db:migrate
 
 # Run tests (when implemented)
 composer test
+
+# Static analysis
+composer phpstan
+
+# Check code style
+composer phpcs
+
+# Fix code style
+composer phpcbf
 ```
 
 ---
 
-## 9. Environment Configuration
+## 9. Migration from Old Structure
 
-### Development vs Production
-
-**Development (`.env`):**
-```env
-APP_ENV=development
-APP_DEBUG=true
-DB_HOST=127.0.0.1
-```
-
-**Production (`.env`):**
-```env
-APP_ENV=production
-APP_DEBUG=false
-DB_HOST=production-db.example.com
-SESSION_SECURE=true
-```
-
-### Conditional Logic
-
-```php
-use App\Config\Config;
-
-if (Config::isDevelopment()) {
-    // Show detailed errors
-    ini_set('display_errors', '1');
-}
-
-if (Config::isProduction()) {
-    // Log errors only
-    ini_set('display_errors', '0');
-    ini_set('log_errors', '1');
-}
-```
-
----
-
-## 10. Migration Guide
-
-### Old Structure → New Structure
+### Old → New Mapping
 
 | Old | New |
 |-----|-----|
-| `require_once 'model/product.php'` | `use App\Models\Product;` |
-| `require_once 'config/connection.php'` | `use App\Config\Database;` |
-| `Database::getConnection()` | `Database::getConnection()` (same) |
+| `require_once 'model/product.php'` | `use App\Model\Product;` |
+| `require_once 'controller/ProductController.php'` | `use App\Controller\ProductController;` |
+| `require_once 'config/connection.php'` | Database included via autoloader |
 | `new Product()` | `new Product()` (same, but namespaced) |
 | `getenv('DB_HOST')` | `Config::get('DB_HOST')` |
+| Manual error checking | `Controller::requireAuth()` |
+| Manual input sanitization | `Controller::sanitize()` |
+| Manual redirects | `Controller::redirect()` or `redirect()` |
+
+### Updating Old Files
+
+**Before:**
+```php
+<?php
+require_once 'config/connection.php';
+
+class Product {
+    private $db;
+
+    public function __construct() {
+        $this->db = Database::getConnection();
+    }
+}
+```
+
+**After:**
+```php
+<?php
+declare(strict_types=1);
+
+namespace App\Model;
+
+class Product extends Model {
+    protected string $table = 'product_data';
+    protected string $primaryKey = 'id';
+
+    // Inherits database connection from Model base class
+}
+```
 
 ---
 
-## 11. Best Practices
+## 10. Best Practices
 
-1. **Always use namespaces** in new files
-2. **Use Config class** instead of direct `getenv()`
-3. **Use helpers** for common operations
-4. **Keep controllers thin** - logic goes in models
-5. **Use type hints** for better code quality
-6. **Follow PSR-12** coding standards
+### General
+
+1. **Always use namespaces** - `namespace App\Model;`
+2. **Use strict types** - `declare(strict_types=1);`
+3. **Type hint everything** - Function parameters and return types
+4. **Use base classes** - Extend `Model` and `Controller`
+5. **Keep controllers thin** - Business logic goes in models
+6. **Use helpers** - Leverage helper functions for common tasks
+
+### Security
+
+1. **Sanitize input** - Use `sanitize()` or `escape()`
+2. **Validate input** - Use `validateRequired()` and custom validation
+3. **Use CSRF protection** - `csrf_field()` and `verify_csrf()`
+4. **Check authentication** - `requireAuth()` in protected routes
+5. **Check authorization** - `requireRole()` for admin actions
+6. **Use prepared statements** - Base Model class handles this
+
+### Code Organization
+
+1. **One class per file** - Match filename to class name
+2. **Follow PSR-12** - Coding standards
+3. **Document your code** - Use PHPDoc comments
+4. **Use meaningful names** - Clear, descriptive variable/method names
+5. **Keep methods small** - Single responsibility principle
 
 ---
 
-## 12. Troubleshooting
+## 11. Troubleshooting
 
 ### "Class not found" Error
 
+**Solution 1: Regenerate autoloader**
 ```bash
-# Regenerate autoloader
 composer dump-autoload
+```
+
+**Solution 2: Check namespace and file location**
+```php
+// Namespace: App\Model\Product
+// File must be: app/model/Product.php (case-sensitive!)
+```
+
+**Solution 3: Check class name matches filename**
+```php
+// File: Product.php
+// Class: class Product (must match exactly)
 ```
 
 ### Config Not Loading
 
+**Check .env file exists:**
+```bash
+ls -la .env
+```
+
+**Manually load in your file:**
 ```php
-// Manually load in your file
-Config::load();
+require_once __DIR__ . '/bootstrap/env.php';
 ```
 
 ### Database Connection Error
 
+**Test connection:**
 ```php
-// Test connection
-if (!Database::testConnection()) {
-    die("Cannot connect to database");
-}
+use App\Config\Config;
+
+$db = Config::getDatabase();
+var_dump($db); // Check credentials
+```
+
+**Check MySQL service:**
+```bash
+# macOS
+brew services list | grep mysql
+
+# Linux
+sudo systemctl status mysql
+```
+
+### Routes Not Working
+
+**Check .htaccess exists:**
+```apache
+# .htaccess in project root
+RewriteEngine On
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^ index.php [QSA,L]
+```
+
+**Check route definition:**
+```php
+// Use correct controller namespace
+$router->get('/products', 'ProductController@index');
+// Controller must be: App\Controller\ProductController
+```
+
+### Session Issues
+
+**Check session configuration:**
+```php
+// In .env
+SESSION_LIFETIME=7200
+SESSION_HTTPONLY=true
+```
+
+**Clear session data:**
+```php
+session_destroy();
 ```
 
 ---
 
-## Summary
+## 12. Summary
 
-Your application now has:
+Your Kedai Emas application now has:
 
-✅ **PSR-4 Autoloading** - No more manual `require` statements
-✅ **Config Management** - Centralized `.env` configuration
-✅ **Modern Database** - PDO with singleton pattern
-✅ **RESTful Router** - Clean URLs with dynamic parameters
-✅ **Helper Functions** - Utility functions available globally
-✅ **Bootstrap System** - Proper initialization
-✅ **Composer Integration** - Professional dependency management
+✅ **PSR-4 Autoloading** - Custom autoloader + Composer support
+✅ **Base Model Class** - Complete CRUD operations with inheritance
+✅ **Base Controller Class** - Authentication, validation, and helpers
+✅ **Config Management** - Centralized environment configuration
+✅ **Router System** - RESTful routing with dynamic parameters
+✅ **Helper Functions** - 20+ utility functions globally available
+✅ **Bootstrap System** - Proper application initialization
+✅ **MVC Architecture** - Clean separation of concerns
+✅ **Security Features** - CSRF, sanitization, auth, and authorization
+✅ **Professional Structure** - Industry-standard PHP development
 
-You're now ready for professional PHP development! 🚀
+---
+
+## Additional Resources
+
+- **MVC_SETUP.md** - Detailed MVC documentation and examples
+- **composer.json** - Dependency and script configuration
+- **.env.example** - Environment variable template
+- **QUICK_REFERENCE.md** - Quick reference guide
+
+You're now ready for professional PHP development with a solid MVC foundation! 🚀
